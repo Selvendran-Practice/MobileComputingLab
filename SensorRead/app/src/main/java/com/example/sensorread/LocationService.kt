@@ -1,11 +1,8 @@
 package com.example.sensorread
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
-import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,11 +18,6 @@ class LocationService(private val context: Context) {
     fun startPeriodicUpdates(periodMillis: Long) {
         updateJob?.cancel()
         
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
-            != PackageManager.PERMISSION_GRANTED) {
-            return
-        }
-
         updateJob = coroutineScope.launch {
             while (isActive) {
                 try {

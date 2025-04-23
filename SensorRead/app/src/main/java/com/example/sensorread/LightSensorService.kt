@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -18,42 +19,55 @@ class LightSensorService(private val context: Context) : SensorEventListener {
     private var threshold: Float? = null
     private var hasNotifiedThreshold = false
     private var lastUpdateTime = 0L
+    private var updateJob: Job? = null
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
+    private var currentLightValue: Float? = null
 
     fun setThreshold(value: Float?) {
         threshold = value
         hasNotifiedThreshold = false
     }
 
-    fun startPeriodicUpdates(periodMillis: Long) {
+    fun startPeriodicUpdates(period: Long) {
         lightSensor?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
         lastUpdateTime = System.currentTimeMillis()
+        
+        // Start periodic UI updates
+        updateJob?.cancel()
+        updateJob = coroutineScope.launch {
+            while (isActive) {
+                delay(period) // Use the provided period instead of hardcoded 5000
+                currentLightValue?.let { value ->
+                    _lightLevel.value = value
+                }
+            }
+        }
     }
 
     fun stopPeriodicUpdates() {
         sensorManager.unregisterListener(this)
+        updateJob?.cancel()
+        updateJob = null
     }
 
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_LIGHT) {
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - lastUpdateTime >= 100) {
-                val newValue = event.values[0]
-                _lightLevel.value = newValue
-                lastUpdateTime = currentTime
+            val newValue = event.values[0]
+            currentLightValue = newValue
 
-                threshold?.let { thresholdValue ->
-                    if (!hasNotifiedThreshold && newValue >= thresholdValue) {
-                        hasNotifiedThreshold = true
-                        android.widget.Toast.makeText(
-                            context,
-                            "Light level (${newValue.format(2)} lux) has reached threshold (${thresholdValue.format(2)} lux)!",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                    } else if (newValue < thresholdValue) {
-                        hasNotifiedThreshold = false
-                    }
+            // Check threshold
+            threshold?.let { thresholdValue ->
+                if (!hasNotifiedThreshold && newValue >= thresholdValue) {
+                    hasNotifiedThreshold = true
+                    android.widget.Toast.makeText(
+                        context,
+                        "Light level (${newValue.format(2)} lux) has reached threshold (${thresholdValue.format(2)} lux)!",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                } else if (newValue < thresholdValue) {
+                    hasNotifiedThreshold = false
                 }
             }
         }

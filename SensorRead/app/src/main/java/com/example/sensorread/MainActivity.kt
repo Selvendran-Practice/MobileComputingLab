@@ -1,11 +1,9 @@
 package com.example.sensorread
 
-import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -19,18 +17,6 @@ import com.example.sensorread.ui.theme.SensorReadTheme
 class MainActivity : ComponentActivity() {
     private lateinit var locationService: LocationService
     private lateinit var lightSensorService: LightSensorService
-
-    private val locationPermissionRequest = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false)) {
-            startPeriodicUpdates()
-        }
-    }
-
-    private fun startPeriodicUpdates() {
-        // Will be called when period is set
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,8 +39,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        locationPermissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
     }
 }
 
@@ -68,9 +52,14 @@ fun SensorScreen(
     val location by locationService.location.collectAsState()
     val lightLevel by lightSensorService.lightLevel.collectAsState()
     var thresholdText by remember { mutableStateOf("") }
-    var periodText by remember { mutableStateOf("1000") }
+    var lightUpdateText by remember { mutableStateOf("5000") }
     var thresholdError by remember { mutableStateOf<String?>(null) }
-    var periodError by remember { mutableStateOf<String?>(null) }
+    var lightUpdateError by remember { mutableStateOf<String?>(null) }
+
+    // Start light sensor updates when the screen is first displayed
+    LaunchedEffect(Unit) {
+        lightSensorService.startPeriodicUpdates(5000)
+    }
 
     Column(
         modifier = modifier
@@ -79,58 +68,6 @@ fun SensorScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Update Period Section
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Update Period",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(
-                    value = periodText,
-                    onValueChange = { 
-                        periodText = it
-                        periodError = null
-                    },
-                    label = { Text("Update Period (milliseconds)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = periodError != null,
-                    supportingText = periodError?.let { { Text(it) } },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Button(
-                    onClick = {
-                        try {
-                            val period = periodText.toLongOrNull()
-                            if (period == null) {
-                                periodError = "Please enter a valid number"
-                            } else if (period < 100) {
-                                periodError = "Period must be at least 100ms"
-                            } else {
-                                onUpdate(period)
-                                periodError = null
-                            }
-                        } catch (e: NumberFormatException) {
-                            periodError = "Please enter a valid number"
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Update")
-                }
-            }
-        }
-
         // GPS Section
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(
@@ -152,6 +89,13 @@ fun SensorScreen(
                     },
                     style = MaterialTheme.typography.bodyLarge
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { onUpdate(1000) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Update GPS")
+                }
             }
         }
 
@@ -176,6 +120,44 @@ fun SensorScreen(
                     },
                     style = MaterialTheme.typography.bodyLarge
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = lightUpdateText,
+                    onValueChange = { 
+                        lightUpdateText = it
+                        lightUpdateError = null
+                    },
+                    label = { Text("Light Update Interval (milliseconds)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = lightUpdateError != null,
+                    supportingText = lightUpdateError?.let { { Text(it) } },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = {
+                        try {
+                            val period = lightUpdateText.toLongOrNull()
+                            if (period == null) {
+                                lightUpdateError = "Please enter a valid number"
+                            } else if (period < 100) {
+                                lightUpdateError = "Period must be at least 100ms"
+                            } else {
+                                lightSensorService.startPeriodicUpdates(period)
+                                lightUpdateError = null
+                            }
+                        } catch (e: NumberFormatException) {
+                            lightUpdateError = "Please enter a valid number"
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Update Light Interval")
+                }
+                
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 OutlinedTextField(
