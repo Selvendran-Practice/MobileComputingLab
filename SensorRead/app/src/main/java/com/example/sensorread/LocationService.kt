@@ -30,8 +30,4 @@ class LocationService(private val context: Context) {
         }
     }
 
-    fun stopPeriodicUpdates() {
-        updateJob?.cancel()
-        updateJob = null
-    }
-} 
+}
