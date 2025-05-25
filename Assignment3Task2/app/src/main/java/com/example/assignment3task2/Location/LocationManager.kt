@@ -21,7 +21,7 @@ class LocationManager(private val context: Context) {
         private const val REQUEST_CHECK_SETTINGS = 123
 
         private const val MIN_DISTANCE_THRESHOLD = 2.0f
-        private const val MIN_ACCURACY_THRESHOLD = 25.0f
+        private const val MIN_ACCURACY_THRESHOLD = 10.0f
         private const val TAG = "LocationManager"
     }
 
@@ -29,7 +29,7 @@ class LocationManager(private val context: Context) {
     private lateinit var locationCallback: LocationCallback
     private var isTracking = false
     private var previousLocation: Location? = null
-    private var trackingStartTime: Long = 0
+    private var trackingStartTime: Long = 7000L
 
     val locationTextState = mutableStateOf("No location yet")
     val distanceTravelledState = mutableStateOf(0f)
@@ -47,7 +47,7 @@ class LocationManager(private val context: Context) {
             averageSpeedState.value = 0.0
             trackingStartTime = System.currentTimeMillis()
 
-            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000).build()
+            val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000).build()
 
             locationCallback = object : LocationCallback() {
                 override fun onLocationResult(locationResult: LocationResult) {
