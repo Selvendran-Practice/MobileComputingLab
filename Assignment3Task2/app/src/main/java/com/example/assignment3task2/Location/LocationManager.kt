@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.assignment3task2.utils.GpxLogger
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 
@@ -35,7 +36,13 @@ class LocationManager(private val context: Context) {
     val distanceTravelledState = mutableStateOf(0f)
     val averageSpeedState = mutableStateOf(0.0)
 
+    // GPX File Logger Instance
+    private val gpxLogger = GpxLogger(context)
+
+
     fun startLocationTracking() {
+
+
         if (!hasPermissions()) {
             Toast.makeText(context, "Permissions not granted", Toast.LENGTH_SHORT).show()
             return
@@ -46,6 +53,15 @@ class LocationManager(private val context: Context) {
             distanceTravelledState.value = 0f
             averageSpeedState.value = 0.0
             trackingStartTime = System.currentTimeMillis()
+
+            val gpxFile = gpxLogger.createGpxFile()
+            if (gpxFile.exists()) {
+                gpxFile.delete()
+                Log.d(TAG, "Deleted old GPX file before starting new tracking.")
+            }
+
+            // Create GPX file when tracking starts
+            gpxLogger.createGpxFile()
 
             val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000).build()
 
@@ -70,6 +86,9 @@ class LocationManager(private val context: Context) {
                             } else {
                                 previousLocation = location
                             }
+
+                            // Log location to GPX file
+                            gpxLogger.logLocation(location.latitude, location.longitude, System.currentTimeMillis())
                         }
 
                         locationTextState.value =
@@ -95,6 +114,10 @@ class LocationManager(private val context: Context) {
         if (isTracking) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
             isTracking = false
+
+            // Finalize GPX file when tracking stops
+            gpxLogger.finalizeGpxFile()
+
             locationTextState.value =
                 "Tracking stopped.\nTotal Distance: ${"%.2f".format(distanceTravelledState.value)} m\n" +
                         "Average Speed: ${"%.2f".format(averageSpeedState.value)} m/s"

@@ -20,9 +20,20 @@ class GpxLogger(private val context: Context) {
         return context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
     }
 
+    private fun deleteGpxFile() {
+        val downloadsFolder = getDownloadsFolder()
+        val gpxFile = File(downloadsFolder, "location_log.gpx")
+        if (gpxFile.exists()) {
+            gpxFile.delete()
+            Log.d(TAG, "Old GPX file deleted.")
+        }
+    }
+
     fun createGpxFile(): File {
         val downloadsFolder = getDownloadsFolder()
         val gpxFile = File(downloadsFolder, "location_log.gpx")
+
+
 
         if (!gpxFile.exists()) {
             try {
