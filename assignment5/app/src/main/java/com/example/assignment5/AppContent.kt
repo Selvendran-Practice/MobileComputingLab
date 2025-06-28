@@ -20,14 +20,14 @@ fun AppContent(writer: TemperatureWriter) {
     Column(modifier = Modifier.padding(24.dp)) {
         when (currentScreen) {
             "menu" -> {
-                Text("Assignment 5 Demo", style = MaterialTheme.typography.headlineMedium)
+                Text("Assignment 5", style = MaterialTheme.typography.headlineMedium)
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = { currentScreen = "temperature" }, modifier = Modifier.fillMaxWidth()) {
                     Text("Fetch Temperature")
                 }
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = { currentScreen = "teams" }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Read Teams")
+                    Text("Read City Temprature")
                 }
             }
 
