@@ -41,28 +41,32 @@ fun CityTemperatureScreen(writer: TemperatureWriter) {
                 resultText = "Fetching..."
                 scope.launch(Dispatchers.IO) {
                     try {
-                        // --- Fetch from RapidAPI ---
+                        // --- Fetch from Weatherstack API ---
                         val encodedCity = URLEncoder.encode(city, "UTF-8")
-                        val url = "https://cities-temperature.p.rapidapi.com/weather/v1/current?location=$encodedCity"
+                        val apiKey = "ab171cb7b467bee1f80d27b3b2a6b0c0"
+                        val url = "https://api.weatherstack.com/current" +
+                                "?access_key=$apiKey" +
+                                "&query=$encodedCity"
+
                         val request = Request.Builder()
                             .url(url)
                             .get()
-                            .addHeader("x-rapidapi-key", "2687136a58msh4dff6c4c2ae1c83p1813bbjsn1919f10665ff")
-                            .addHeader("x-rapidapi-host", "cities-temperature.p.rapidapi.com")
                             .build()
-                        val client = OkHttpClient()
 
+                        val client = OkHttpClient()
                         client.newCall(request).execute().use { resp ->
                             if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
                             val body = resp.body?.string() ?: throw Exception("Empty body")
-                            val temp = JSONObject(body).getDouble("temperature")
+
+                            // Parse out current.temperature
+                            val temp = JSONObject(body)
+                                .getJSONObject("current")
+                                .getDouble("temperature")
                             Log.d("TEMP", "Parsed temperature: $temp")
 
                             // --- Back to Main thread to update UI & write to DB ---
                             launch(Dispatchers.Main) {
                                 resultText = "Current temperature in $city: $temp °C"
-
-                                // Delegate the DB write; get callback for success/failure
                                 writer.write(city, temp) { success ->
                                     resultText = if (success) {
                                         "✅ Fetched $temp°C for $city and stored in DB"

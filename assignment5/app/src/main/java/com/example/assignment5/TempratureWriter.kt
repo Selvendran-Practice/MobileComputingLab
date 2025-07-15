@@ -1,47 +1,50 @@
 package com.example.assignment5
 
 import android.util.Log
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 interface TemperatureWriter {
-    /**
-     * Write the temperature to Firebase under:
-     * /location/{normalizedCity}/{yyyy-MM-dd}/{timestamp} = temp
-     *
-     * @param city Name of the city (user input)
-     * @param temp Temperature in Celsius (from API)
-     * @param onDone Callback: true = success, false = error
-     */
+
     fun write(city: String, temp: Double, onDone: (Boolean) -> Unit)
 }
 
-class FirebaseTemperatureWriter : TemperatureWriter {
+class FirebaseTemperatureWriter(
+    private val rootRef: DatabaseReference = FirebaseDatabase
+        .getInstance()
+        .getReference(LOCATION_PATH),
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+) : TemperatureWriter {
+
     override fun write(city: String, temp: Double, onDone: (Boolean) -> Unit) {
-        try {
-            val normalizedCity = city.trim().replaceFirstChar { it.uppercase() }
-            val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            val timestamp = System.currentTimeMillis().toString()
+        val normalizedCity = city
+            .trim()
+            .replaceFirstChar { it.uppercase() }
 
-            val ref = FirebaseDatabase.getInstance()
-                .getReference("location")
-                .child(normalizedCity)
-                .child(date)
-                .child(timestamp)
+        val date = LocalDate.now()
+            .format(dateFormatter)
 
-            ref.setValue(temp)
-                .addOnSuccessListener {
-                    Log.d("TEMP_WRITE", "✅ Wrote $temp°C to /location/$normalizedCity/$date/$timestamp")
-                    onDone(true)
-                }
-                .addOnFailureListener { ex ->
-                    Log.e("TEMP_WRITE", "❌ Failed to write temperature", ex)
-                    onDone(false)
-                }
-        } catch (e: Exception) {
-            Log.e("TEMP_WRITE", "❌ Exception during write", e)
-            onDone(false)
-        }
+        val timestamp = System.currentTimeMillis().toString()
+
+        rootRef
+            .child(normalizedCity)
+            .child(date)
+            .child(timestamp)
+            .setValue(temp)
+            .addOnSuccessListener {
+                Log.d(TAG, "✅ Wrote $temp°C to /$LOCATION_PATH/$normalizedCity/$date/$timestamp")
+                onDone(true)
+            }
+            .addOnFailureListener { ex ->
+                Log.e(TAG, "❌ Failed to write temperature", ex)
+                onDone(false)
+            }
+    }
+
+    companion object {
+        private const val TAG = "TemperatureWriter"
+        private const val LOCATION_PATH = "location"
     }
 }
